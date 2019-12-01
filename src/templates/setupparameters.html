@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Set Up Team Parameters{% endblock %}
+{% block head %}
+  {{ super() }}
+{% endblock %}
+<html>
+  <body>
+    {%block content%}
+    <h1>Set Up Team Parameters</h1>
+    <form method="POST" action="/">
+      <input type="text" name="title">
+      <input type="submit" value="Add">
+    </form>
+    {%endblock%}
+  </body>
+</html>
