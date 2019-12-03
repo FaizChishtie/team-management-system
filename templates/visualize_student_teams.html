@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Visualize Student Teams{% endblock %}
+{% block head %}
+  {{ super() }}
+{% endblock %}
+<html>
+  <body>
+    {%block content%}
+    <h1>Visualize Student Teams</h1>
+    {%if current_user.instructor %}
+    <br>
+    <br>
+  
+      {% for item in data %}
+        <br>
+        <div>
+                <p style="text-align: left;">
+                        Team Name: <strong>{{ item.team_name }}</strong> 
+                </p>
+                <p style="text-align: left;">
+                        Capacity: {{ item.size[0][0] }}
+                </p>
+            </div>
+        <table class="table">
+            <tr>
+              <th>Member</th>
+              <th>Student Number</th>
+              <th>Program</th>
+            </tr>
+          <tr>
+            <td>{{item.retrieved[0][0]}}</td>
+            <td>{{item.retrieved[0][1]}}</td>
+            <td>{{item.retrieved[0][2]}}</td>
+          </tr>
+        </table>
+        <hr>
+      {% endfor %}
+    {%endif%}
+  {% endblock %}
+  </body>
+</html>

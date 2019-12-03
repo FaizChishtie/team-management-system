@@ -8,6 +8,7 @@ from wtforms.validators import InputRequired, Email, Length, EqualTo
 from flask_sqlalchemy  import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from flask_table import Table, Col
 
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -105,6 +106,11 @@ def add_one_to_team(team_name, username, liaison=False, new=False):
         new_member = TeamsList(team_name=team_name, username=username, liaison=liaison)
         db.session.add(new_member)
 
+def get_user_teams(username, liaison=False):
+    scalar = db.session.query(TeamsList.id).filter_by(username=username).scalar()
+    if not (scalar == None):
+        _t = TeamsList.query.with_entities(TeamsList.team_name).filter_by(username=username).all()
+
 
 ######## CREATE TEAMS ########
 
@@ -152,12 +158,12 @@ def accept_new_students():
 @app.route('/visualize_student_teams')
 @login_required
 def visualize_student_teams():
-    return 'Todo'
+    return render_template('visualize_student_teams.html', data=db_get_all_teams())
 
 @app.route('/view_teams')
 @login_required
 def view_teams():
-    return 'Todo'
+    return render_template('view_my_teams.html', data= db_get_teams_for_user(current_user.username))
 
 @app.route('/join_teams')
 @login_required
@@ -197,11 +203,45 @@ class TeamsList(db.Model):
     __tablename__ = "teams_list"
     id = db.Column(db.Integer, primary_key=True)
     team_name = db.Column(db.String(30), unique=True)
-    username = db.Column(db.String(15), unique=True)
+    username = db.Column(db.String(15))
     liaison = db.Column(db.Boolean)
 
     def __repr__(self):
         return "<Team Name: {}>".format(self.team_name)
+
+def as_cursor(query):
+    connection = db.engine.raw_connection()
+    cursor = connection.cursor()
+    cursor.execute(query)
+    return cursor.fetchall()
+
+def db_get_teams_for_user(username):
+    return as_cursor('SELECT team_name FROM teams_list WHERE username is \'{}\''.format(username))
+
+def db_pack_users_in_team(team_name):
+    _dict = {
+        'team_name' : team_name,
+        'retrieved' : db_retrieve_users_in_team(team_name),
+        'size' : db_count_members_in_team(team_name)
+    }
+    return _dict
+
+def db_count_members_in_team(team_name):
+    return as_cursor('SELECT COUNT(teams_list.username) FROM teams_list WHERE teams_list.team_name is \'{}\''.format(team_name))
+
+def db_retrieve_users_in_team(team_name):
+    return as_cursor('SELECT teams_list.username, student.student_number, student.program FROM teams_list INNER JOIN student ON teams_list.username=student.username WHERE teams_list.team_name is \'{}\''.format(team_name))
+
+def db_get_team_names():
+    return as_cursor('SELECT team_name FROM teams_list')
+
+def db_get_all_teams():
+    formattable = []
+    for pair in db_get_team_names():
+        t_name = pair[0]
+        formattable.append(db_pack_users_in_team(t_name))
+    return formattable
+    
 
 ######## DATABASE ########
 
