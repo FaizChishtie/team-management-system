@@ -19,5 +19,6 @@ SEG3102 Team management system
 * ~~Student log in~~
 * Create team
 * Join team
+* ~~Student Profiles~~
 * Accept new students
 * ~~Student log out~~
