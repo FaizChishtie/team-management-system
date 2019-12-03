@@ -49,7 +49,7 @@ def set_up_parameters():
             flash('Maximum team size must be greater than minimum team size.')
             return redirect(url_for('set_up_parameters'))
         try:
-            t_param = TeamParameter.query.filter_by(team_name=form.name).first()
+            t_param = TeamParameter.query.first()
             o = 'Updated existing parameter'
             if not t_param == None:
                 t_param.min_size = form.min_size.data
@@ -74,38 +74,36 @@ def is_team_creatable():
 
 ######## CREATE TEAMS ########
 
-@app.route('/create_teams')
+@app.route('/create_teams', methods=["GET", "POST"])
 @login_required
 def create_teams():
     enabled = True
     form = CreateTeamForm()
-    t_param = TeamParameter.query.first()
-    if t_param == None:
-        flash('Unfortunately an instructor has not set the parameters for team creation.\nPlease check back here in a bit or contact your instructor to enable this functionality.')
+    if not is_team_creatable():
         enabled = False
     if form.validate_on_submit():
         try:
-            team = Team.query.filter_by(team_name=form.team_name.name)
+            team = db.session.query(TeamsList.id).filter_by(team_name=form.team_name.data).scalar()
             if not team == None:
                 flash('Team name already exists!')
                 return redirect(url_for('create_teams'))
             else:
-                o = 'New student profile has been created!'
-                new_student = Student(student_number=form.student_number.data, program=form.program.data)
-                db.session.add(new_student)
+                o = 'Team created with \'{}\' as liason!'.format(current_user.username)
+                add_one_to_team(team_name=form.team_name.data, username=current_user.username, liaison=True, new=True)
             db.session.commit()
 
             flash(o)
             return redirect(url_for('index'))
-        except:
-            flash('Something went wrong!')
+        except Exception as e:
+            flash('Something went wrong! \n{}'.format(str(e)))
 
     return render_template('create_teams.html', enabled=enabled, form=form)
 
-def add_one_to_team(team_name, username, liaison=False):
-    team_id = TeamsList.query.filter_by(team_name=team_name)
-    if not (team_id == None):
-        new_member = Team(username=username, liaison=liaison)
+def add_one_to_team(team_name, username, liaison=False, new=False):
+    scalar = db.session.query(TeamsList.id).filter_by(team_name=team_name).scalar()
+    if (not (scalar == None)) or new:
+        new_member = TeamsList(team_name=team_name, username=username, liaison=liaison)
+        db.session.add(new_member)
 
 
 ######## CREATE TEAMS ########
@@ -119,26 +117,30 @@ def student_profile():
 
     if form.validate_on_submit():
         try:
-            student = Student.query.filter_by(username=current_user.username)
+            student = db.session.query(Student.id).filter_by(username=current_user.username).scalar()
             o = 'Updated existing student'
             if not student == None:
-                student.student_number = form.student_number.data
-                student.program = form.program.data
+                _s = Student.query.filter_by(username=current_user.username).first()
+                _s.student_number = form.student_number.data
+                _s.program = form.program.data
             else:
                 o = 'New student profile has been created!'
-                new_student = Student(student_number=form.student_number.data, program=form.program.data)
+                new_student = Student(username=current_user.username, student_number=form.student_number.data, program=form.program.data)
                 db.session.add(new_student)
             db.session.commit()
 
             flash(o)
             return redirect(url_for('index'))
-        except:
-            flash('Something went wrong!')
+        except Exception as e:
+            flash('Something went wrong! \n{}'.format(str(e)))
         
     return render_template('student_profile.html', form=form)
 
 def student_profile_is_set():
-    return not (Student.query.filter_by(username=current_user.username) == None) and (not current_user.instructor)
+    if current_user.instructor:
+        return True
+    else:
+        return not (db.session.query(Student.id).filter_by(username=current_user.username).scalar() == None)
 
 ######## STUDENT PROFILE ########
 
@@ -195,18 +197,11 @@ class TeamsList(db.Model):
     __tablename__ = "teams_list"
     id = db.Column(db.Integer, primary_key=True)
     team_name = db.Column(db.String(30), unique=True)
-    team_id = db.Column(db.Integer, db.ForeignKey('team.id'))
+    username = db.Column(db.String(15), unique=True)
+    liaison = db.Column(db.Boolean)
 
     def __repr__(self):
         return "<Team Name: {}>".format(self.team_name)
-
-class Team(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(15), unique=True)
-    liason = db.Column(db.Boolean)
-
-    def __repr__(self):
-        return "<Username: {}>".format(self.username)
 
 ######## DATABASE ########
 

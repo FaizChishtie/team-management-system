@@ -9,11 +9,13 @@
         <p>
             {{ form.team_name.label }}<br>
             {{ form.team_name(size=32) }}<br>
-            {% for error in form.name.errors %}
+            {% for error in form.team_name.errors %}
             <span style="color: red;">[{{ error }}]</span>
             {% endfor %}
         </p>
         <p>{{ form.submit() }}</p>
     </form>
+    {% else %}
+      <p>Unfortunately an instructor has not set the parameters for team creation.<br>Please check back here in a bit or contact your instructor to enable this functionality. </p>
     {%endif%}
 {% endblock %}
