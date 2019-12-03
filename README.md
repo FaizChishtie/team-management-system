@@ -13,7 +13,7 @@ SEG3102 Team management system
 
 * ~~Register User~~
 * ~~Instructor log in~~ 
-* Set up parameters 
+* ~~Set up parameters~~
 * Visualize students teams
 * ~~Instructor log out~~
 * ~~Student log in~~
