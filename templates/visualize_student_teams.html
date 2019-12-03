@@ -27,11 +27,13 @@
               <th>Student Number</th>
               <th>Program</th>
             </tr>
+          {% for user in item.retrieved %}
           <tr>
-            <td>{{item.retrieved[0][0]}}</td>
-            <td>{{item.retrieved[0][1]}}</td>
-            <td>{{item.retrieved[0][2]}}</td>
+            <td>{{user[0]}}</td>
+            <td>{{user[1]}}</td>
+            <td>{{user[2]}}</td>
           </tr>
+          {%endfor%}
         </table>
         <hr>
       {% endfor %}

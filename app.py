@@ -150,20 +150,68 @@ def student_profile_is_set():
 
 ######## STUDENT PROFILE ########
 
-@app.route('/accept_new_students')
+######## ACCEPT NEW STUDENTS ########
+
+@app.route('/accept_new_students', methods = ["GET", "POST"])
 @login_required
 def accept_new_students():
-    return 'Todo'
+    form = AcceptNewStudentsForm()
+
+    if form.validate_on_submit():
+        try:
+            team = db.session.query(TeamsList.id).filter_by(team_name=form.team_name.data).scalar()
+            if not user_exists(form.username.data):
+                flash('User {} does not exist.'.format(form.username.data))
+                return redirect(url_for('accept_new_students'))
+
+            if team == None:
+                flash('No team with name {}.'.format(form.team_name.data))
+                return redirect(url_for('accept_new_students'))
+
+            if not user_is_liaison_for(form.team_name.data, current_user.username):
+                flash('You are not a liaison for {}.'.format(form.team_name.data))
+                return redirect(url_for('accept_new_students'))
+
+            if db_user_in_team(form.team_name.data, form.username.data):
+                flash('User {} already in {}.'.format(form.username.data, form.team_name.data))
+                return redirect(url_for('accept_new_students'))
+
+            req = RequestForTeam.query.filter_by(username=form.username.data, team_name=form.team_name.data).first()
+
+            if not req == None:
+                o = 'User {} joined {}.'.format(form.username.data, form.team_name.data)
+                add_one_to_team(form.team_name.data, form.username.data)
+                db.session.commit()
+                flash(o)
+                return redirect(url_for('index'))
+
+        except Exception as e:
+            flash('Something went wrong! \n{}'.format(str(e)))
+
+
+    return render_template('accept_new_students.html', form=form, data=db_all_liason_for_user(current_user.username), open=db_get_all_requests(current_user.username))
+
+######## ACCEPT NEW STUDENTS ########
+
+######## VISUALIZE STUDENT TEAMS ########
 
 @app.route('/visualize_student_teams')
 @login_required
 def visualize_student_teams():
     return render_template('visualize_student_teams.html', data=db_get_all_teams())
 
+######## VISUALIZE STUDENT TEAMS ########
+
+######## VIEW TEAMS ########
+
 @app.route('/view_teams')
 @login_required
 def view_teams():
     return render_template('view_teams.html', data= db_get_teams_for_user(current_user.username), open=db_get_open_teams_for_user(current_user.username))
+
+######## VIEW TEAMS ########
+
+######## JOIN TEAMS ########
 
 @app.route('/join_teams', methods = ["GET", "POST"])
 @login_required
@@ -173,7 +221,6 @@ def join_teams():
     if form.validate_on_submit():
         try:
             team = db.session.query(TeamsList.id).filter_by(team_name=form.team_name.data).scalar()
-            print()
             if not team == None:
                 if not db_user_in_team(form.team_name.data, current_user.username):
                     o = 'Created request to join team {}'.format(form.team_name.data)
@@ -198,6 +245,8 @@ def join_teams():
             flash('Something went wrong! \n{}'.format(str(e)))
         
     return render_template('join_team.html', form=form, data = db_get_user_requests(current_user.username))
+
+######## VIEW TEAMS ########
 
 ######## ROUTES ########
 
@@ -273,7 +322,7 @@ def db_retrieve_users_in_team(team_name):
     return as_cursor('SELECT teams_list.username, student.student_number, student.program FROM teams_list INNER JOIN student ON teams_list.username=student.username WHERE teams_list.team_name is \'{}\''.format(team_name))
 
 def db_get_team_names():
-    return as_cursor('SELECT team_name FROM teams_list')
+    return as_cursor('SELECT DISTINCT team_name FROM teams_list')
 
 def db_get_all_teams():
     formattable = []
@@ -284,6 +333,32 @@ def db_get_all_teams():
 
 def db_user_in_team(team_name, username):
     return not as_cursor('SELECT COUNT(teams_list.username) FROM teams_list WHERE teams_list.team_name is \'{}\' AND teams_list.username is \'{}\''.format(team_name,username))[0][0] == 0
+
+def db_all_liason_for_user(username):
+    return as_cursor('SELECT team_name FROM teams_list WHERE username is \'{}\' AND liaison'.format(username))
+
+def user_is_liaison_for(team_name, username):
+    return not (as_cursor('SELECT COUNT(teams_list.team_name) FROM teams_list WHERE username is \'{}\' AND liaison'.format(username))[0][0] == 0)
+
+def db_pack_users_in_requests(team_name):
+    _dict = {
+        'team_name' : team_name,
+        'retrieved' : db_retrieve_users_in_request_where_liaison(team_name),
+    }
+    return _dict
+
+def db_retrieve_users_in_request_where_liaison(team_name):
+    return as_cursor('SELECT username FROM request_for_team WHERE team_name is \'{}\''.format(team_name))
+
+def db_get_all_requests(username):
+    formattable = []
+    for pair in db_all_liason_for_user(username):
+        t_name = pair[0]
+        formattable.append(db_pack_users_in_requests(t_name))
+    return formattable
+
+def user_exists(username):
+    return not (as_cursor('SELECT COUNT(student.username) FROM student WHERE username is \'{}\''.format(username))[0][0] == 0)
 
 ######## DATABASE ########
 
@@ -319,6 +394,11 @@ class CreateTeamForm(FlaskForm):
 class JoinTeamForm(FlaskForm):
     team_name = StringField('Team Name', validators=[InputRequired(), Length(max=30)])
     submit = SubmitField('Request To Join')
+
+class AcceptNewStudentsForm(FlaskForm):
+    team_name = StringField('Team Name', validators=[InputRequired(), Length(max=30)])
+    username = StringField('Username', validators=[InputRequired(), Length(min=4, max=15)])
+    submit = SubmitField('Approve Request')
 
 ######## FORMS ########
 
