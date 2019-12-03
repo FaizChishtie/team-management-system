@@ -38,8 +38,6 @@
 
         <a href="{{ url_for('set_up_parameters') }}" class="list-group-item list-group-item-action bg-light">Set Up Parameters</a>
         <a href="{{ url_for('visualize_student_teams') }}" class="list-group-item list-group-item-action bg-light">Visualize Student Teams</a>
-        <a href="{{ url_for('create_teams') }}" class="list-group-item list-group-item-action bg-light">Create A Team</a>
-        <a href="{{ url_for('accept_new_students') }}" class="list-group-item list-group-item-action bg-light">Accept New Students</a>
 
           {%endif%}
 
@@ -47,9 +45,10 @@
 
           {%if not current_user.instructor %}
 
-        <a href="{{ url_for('view_teams') }}" class="list-group-item list-group-item-action bg-light">View My Teams</a>
+        <a href="{{ url_for('view_teams') }}" class="list-group-item list-group-item-action bg-light">View Teams</a>
         <a href="{{ url_for('create_teams') }}" class="list-group-item list-group-item-action bg-light">Create A Team</a>
-        <a href="{{ url_for('join_teams') }}" class="list-group-item list-group-item-action bg-light">Join Team</a>
+        <a href="{{ url_for('join_teams') }}" class="list-group-item list-group-item-action bg-light">Join A Team</a>
+        <a href="{{ url_for('accept_new_students') }}" class="list-group-item list-group-item-action bg-light">Accept New Students</a>
 
          {%endif%}
         {%endif%}

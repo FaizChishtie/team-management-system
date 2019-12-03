@@ -163,12 +163,41 @@ def visualize_student_teams():
 @app.route('/view_teams')
 @login_required
 def view_teams():
-    return render_template('view_my_teams.html', data= db_get_teams_for_user(current_user.username))
+    return render_template('view_teams.html', data= db_get_teams_for_user(current_user.username), open=db_get_open_teams_for_user(current_user.username))
 
-@app.route('/join_teams')
+@app.route('/join_teams', methods = ["GET", "POST"])
 @login_required
 def join_teams():
-    return 'Todo'
+    form = JoinTeamForm()
+
+    if form.validate_on_submit():
+        try:
+            team = db.session.query(TeamsList.id).filter_by(team_name=form.team_name.data).scalar()
+            print()
+            if not team == None:
+                if not db_user_in_team(form.team_name.data, current_user.username):
+                    o = 'Created request to join team {}'.format(form.team_name.data)
+                    req = RequestForTeam.query.filter_by(username=current_user.username, team_name=form.team_name.data).first()
+                    if req == None:
+                        new_request = RequestForTeam(username=current_user.username, team_name=form.team_name.data)
+                        db.session.add(new_request)
+                        db.session.commit()
+                    else:
+                        flash('You\'ve already made a request to join {}.'.format(form.team_name.data))
+                        return redirect(url_for('join_teams'))
+                else:
+                    flash('You\'re already in {}.'.format(form.team_name.data))
+                    return redirect(url_for('join_teams'))
+            else:
+                flash('No team with name {}.'.format(form.team_name.data))
+                return redirect(url_for('join_teams'))
+
+            flash(o)
+            return redirect(url_for('index'))
+        except Exception as e:
+            flash('Something went wrong! \n{}'.format(str(e)))
+        
+    return render_template('join_team.html', form=form, data = db_get_user_requests(current_user.username))
 
 ######## ROUTES ########
 
@@ -199,10 +228,15 @@ class TeamParameter(db.Model):
     min_size = db.Column(db.Integer)
     active = db.Column(db.Boolean)
 
+class RequestForTeam(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(15))
+    team_name = db.Column(db.String(30))
+
 class TeamsList(db.Model):
     __tablename__ = "teams_list"
     id = db.Column(db.Integer, primary_key=True)
-    team_name = db.Column(db.String(30), unique=True)
+    team_name = db.Column(db.String(30))
     username = db.Column(db.String(15))
     liaison = db.Column(db.Boolean)
 
@@ -217,6 +251,12 @@ def as_cursor(query):
 
 def db_get_teams_for_user(username):
     return as_cursor('SELECT team_name FROM teams_list WHERE username is \'{}\''.format(username))
+
+def db_get_open_teams_for_user(username):
+    return as_cursor('SELECT team_name FROM teams_list WHERE username is NOT\'{}\''.format(username))
+
+def db_get_user_requests(username):
+    return as_cursor('SELECT team_name FROM request_for_team WHERE username is \'{}\''.format(username))
 
 def db_pack_users_in_team(team_name):
     _dict = {
@@ -241,7 +281,9 @@ def db_get_all_teams():
         t_name = pair[0]
         formattable.append(db_pack_users_in_team(t_name))
     return formattable
-    
+
+def db_user_in_team(team_name, username):
+    return not as_cursor('SELECT COUNT(teams_list.username) FROM teams_list WHERE teams_list.team_name is \'{}\' AND teams_list.username is \'{}\''.format(team_name,username))[0][0] == 0
 
 ######## DATABASE ########
 
@@ -273,6 +315,11 @@ class StudentProfileForm(FlaskForm):
 class CreateTeamForm(FlaskForm):
     team_name = StringField('Team Name', validators=[InputRequired(), Length(max=30)])
     submit = SubmitField('Create Team')
+
+class JoinTeamForm(FlaskForm):
+    team_name = StringField('Team Name', validators=[InputRequired(), Length(max=30)])
+    submit = SubmitField('Request To Join')
+
 ######## FORMS ########
 
 ######## LOGIN/SIGNUP ########
