@@ -1,5 +1,6 @@
 node_modules
 /.vscode
-/static/jquery
+/static/vendor
 *.pyc
 *.db
+*.map
