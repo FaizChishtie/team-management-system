@@ -31,9 +31,11 @@
           <th>Team Name</th>
         </tr>
       {% for item in data %}
+        {% if not item[0] == None  %}
           <tr>
             <td>{{item[0]}}</td>
           </tr>
+          {%endif%}
       {% endfor %}
     </table>
 
@@ -46,14 +48,17 @@
                         Team Name: <strong>{{ item.team_name }}</strong> 
                 </p>
             </div>
+        {% if not item == None  %}
         <table class="table">
             <tr>
               <th>Username</th>
             </tr>
           <tr>
+
             <td>{{item.retrieved[0][0]}}</td>
           </tr>
         </table>
+        {% endif %}
         <hr>
       {% endfor %}
 {% endblock %}
