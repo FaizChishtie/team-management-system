@@ -24,11 +24,18 @@ login_manager.login_view = 'login'
 
 ######## ROUTES ########
 
+######## INDEX ########
+
 @app.route('/')
 @app.route('/index')
 @login_required
 def index():
+    if not student_profile_is_set():
+        flash('Please set up your profile before continuing with the system!')
+        return redirect(url_for('student_profile'))
     return render_template('index.html')
+
+######## INDEX ########
 
 ######## SET UP PARAMS ########
 
@@ -62,12 +69,49 @@ def set_up_parameters():
 
 def is_team_creatable():
     return not (TeamParameter.query.first() == None)
+
 ######## SET UP PARAMS ########
+
+######## CREATE TEAMS ########
 
 @app.route('/create_teams')
 @login_required
 def create_teams():
     return 'Todo'
+
+######## CREATE TEAMS ########
+
+######## STUDENT PROFILE ########
+
+@app.route('/student_profile', methods=["GET", "POST"])
+@login_required
+def student_profile():
+    form = StudentProfileForm()
+
+    if form.validate_on_submit():
+        try:
+            student = Student.query.filter_by(username=current_user.username)
+            o = 'Updated existing student'
+            if not student == None:
+                student.student_number = form.student_number.data
+                student.program = form.program.data
+            else:
+                o = 'New student profile has been created!'
+                new_student = Student(student_number=form.student_number.data, program=form.program.data)
+                db.session.add(new_student)
+            db.session.commit()
+
+            flash(o)
+            return redirect(url_for('index'))
+        except:
+            flash('Something went wrong!')
+        
+    return render_template('student_profile.html', form=form)
+
+def student_profile_is_set():
+    return not (Student.query.filter_by(username=current_user.username) == None) and (not current_user.instructor)
+
+######## STUDENT PROFILE ########
 
 @app.route('/accept_new_students')
 @login_required
@@ -105,9 +149,9 @@ class User(UserMixin, db.Model):
 
 class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(15), unique=True)
     student_number = db.Column(db.String(15))
     program = db.Column(db.String(80))
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
     def __repr__(self):
         return "<Student: {}>".format(self.student_number)
@@ -158,6 +202,11 @@ class SetUpParametersForm(FlaskForm):
     min_size = IntegerField('Minimum Size')
     max_size = IntegerField('Maximum Size')
     submit = SubmitField('Set Up Parameters')
+
+class StudentProfileForm(FlaskForm):
+    student_number = StringField('Student Number', validators=[InputRequired(), Length(max=10)])
+    program = StringField('Program', validators=[InputRequired(), Length(max=80)])
+    submit = SubmitField('Update Profile')
 
 ######## FORMS ########
 
