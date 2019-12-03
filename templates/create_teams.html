@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Create a Team{% endblock %}
+
+{% block content %}
+    <h1>Create a Team</h1>
+    {%if enabled %}
+    <form action="" method="post">
+        {{ form.hidden_tag() }}
+        <p>
+            {{ form.team_name.label }}<br>
+            {{ form.team_name(size=32) }}<br>
+            {% for error in form.name.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+            {% endfor %}
+        </p>
+        <p>{{ form.submit() }}</p>
+    </form>
+    {%endif%}
+{% endblock %}

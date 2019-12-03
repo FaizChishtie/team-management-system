@@ -3,7 +3,7 @@ from flask import Flask, render_template, redirect, url_for, flash
 from flask_bootstrap import Bootstrap
 from flask_migrate import Migrate
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField, IntegerField
+from wtforms import StringField, PasswordField, BooleanField, SubmitField, IntegerField, SelectMultipleField
 from wtforms.validators import InputRequired, Email, Length, EqualTo
 from flask_sqlalchemy  import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -49,14 +49,14 @@ def set_up_parameters():
             flash('Maximum team size must be greater than minimum team size.')
             return redirect(url_for('set_up_parameters'))
         try:
-            t_param = TeamParameter.query.first()
+            t_param = TeamParameter.query.filter_by(team_name=form.name).first()
             o = 'Updated existing parameter'
             if not t_param == None:
                 t_param.min_size = form.min_size.data
                 t_param.max_size = form.max_size.data
             else:
                 o = 'New parameter has been created!'
-                new_parameter = TeamParameter(max_size=form.max_size.data, min_size=form.min_size.data)
+                new_parameter = TeamParameter(max_size=form.max_size.data, min_size=form.min_size.data, active=True)
                 db.session.add(new_parameter)
             db.session.commit()
 
@@ -77,7 +77,36 @@ def is_team_creatable():
 @app.route('/create_teams')
 @login_required
 def create_teams():
-    return 'Todo'
+    enabled = True
+    form = CreateTeamForm()
+    t_param = TeamParameter.query.first()
+    if t_param == None:
+        flash('Unfortunately an instructor has not set the parameters for team creation.\nPlease check back here in a bit or contact your instructor to enable this functionality.')
+        enabled = False
+    if form.validate_on_submit():
+        try:
+            team = Team.query.filter_by(team_name=form.team_name.name)
+            if not team == None:
+                flash('Team name already exists!')
+                return redirect(url_for('create_teams'))
+            else:
+                o = 'New student profile has been created!'
+                new_student = Student(student_number=form.student_number.data, program=form.program.data)
+                db.session.add(new_student)
+            db.session.commit()
+
+            flash(o)
+            return redirect(url_for('index'))
+        except:
+            flash('Something went wrong!')
+
+    return render_template('create_teams.html', enabled=enabled, form=form)
+
+def add_one_to_team(team_name, username, liaison=False):
+    team_id = TeamsList.query.filter_by(team_name=team_name)
+    if not (team_id == None):
+        new_member = Team(username=username, liaison=liaison)
+
 
 ######## CREATE TEAMS ########
 
@@ -172,10 +201,8 @@ class TeamsList(db.Model):
         return "<Team Name: {}>".format(self.team_name)
 
 class Team(db.Model):
-    __tablename__ = "team"
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(15), unique=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     liason = db.Column(db.Boolean)
 
     def __repr__(self):
@@ -208,6 +235,9 @@ class StudentProfileForm(FlaskForm):
     program = StringField('Program', validators=[InputRequired(), Length(max=80)])
     submit = SubmitField('Update Profile')
 
+class CreateTeamForm(FlaskForm):
+    team_name = StringField('Team Name', validators=[InputRequired(), Length(max=30)])
+    submit = SubmitField('Create Team')
 ######## FORMS ########
 
 ######## LOGIN/SIGNUP ########
